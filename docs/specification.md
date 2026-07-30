@@ -298,9 +298,15 @@ options:
     excluded: true
     excluded_reason: Pilot residuals did not justify adding curvature.
     excluded_by: {actor: jane, role: validation}
+    excluded_at: "2026-05-09"
+    exclusion_rationale: >-
+      Curvature is not ruled out by the pilot, but adding it now would
+      fit noise at this sample size.
 ```
 
 Every attribution value is either a bare actor id (shorthand) or an `{actor, role}` object whose `role` comes from a CRediT-derived vocabulary keyed to the actor's type (`conceptualization` and `supervision` are human-only). Universe selections can carry `selected_by` / `reviewed_by` the same way — see the Universe field reference. All actor fields are optional; a spec with none is valid and unchanged in meaning. See RFC-0003 for the full design.
+
+An exclusion can be recorded in full: `excluded_by` says who ruled the option out, `excluded_at` says when (an ISO-8601 calendar date), and `exclusion_rationale` says why the decider found the evidence dispositive. That last field is deliberately separate from `excluded_reason`, which records what was measured or observed. The two come apart whenever an option is rejected on a stated principle despite numbers that looked acceptable on their own — keeping them in one field would flatten the evidence into the judgment and lose the ability to audit either. Dates matter for the same reason ordering does: an option ruled out before a later result landed was judged on different evidence than one ruled out after.
 
 ### Sub-analyses
 
@@ -561,9 +567,11 @@ An option is one possible selection for a decision.
 | `requires` | `string[]` | No | Other options that must be selected with this one. |
 | `incompatible_with` | `string[]` | No | Other options that cannot be selected with this one. |
 | `excluded` | `boolean` | No | Marks an option as considered but unavailable. |
-| `excluded_reason` | `string` | No | Why the option was excluded. |
+| `excluded_reason` | `string` | No | What was measured or observed that motivated the exclusion. |
 | `proposed_by` | actor id or `Attribution` | No | Who put this option on the table. |
 | `excluded_by` | actor id or `Attribution` | No | Who ruled this option out; only legal alongside `excluded: true`. |
+| `excluded_at` | `date` | No | ISO-8601 calendar date the option was ruled out; only legal alongside `excluded: true`. |
+| `exclusion_rationale` | `string` | No | Why the decider found that evidence dispositive, as distinct from `excluded_reason`; only legal alongside `excluded: true`. |
 
 Constraint references use `decision_id.option_id` and are scoped within the same analysis node.
 

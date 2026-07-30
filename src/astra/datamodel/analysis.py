@@ -1,5 +1,5 @@
 # Auto generated from analysis.yaml by pythongen.py version: 0.0.1
-# Generation date: 2026-07-30T10:26:49
+# Generation date: 2026-07-30T10:43:00
 # Schema: analysis
 #
 # id: https://w3id.org/astra/analysis
@@ -58,8 +58,8 @@ from rdflib import (
     URIRef
 )
 
-from linkml_runtime.linkml_model.types import Boolean, Datetime, Float, Integer, String
-from linkml_runtime.utils.metamodelcore import Bool, XSDDateTime
+from linkml_runtime.linkml_model.types import Boolean, Date, Datetime, Float, Integer, String
+from linkml_runtime.utils.metamodelcore import Bool, XSDDate, XSDDateTime
 
 metamodel_version = "1.7.0"
 version = "0.0.13"
@@ -375,6 +375,8 @@ class Option(YAMLRoot):
     excluded_reason: Optional[str] = None
     proposed_by: Optional[Union[dict, "Attribution"]] = None
     excluded_by: Optional[Union[dict, "Attribution"]] = None
+    excluded_at: Optional[Union[str, XSDDate]] = None
+    exclusion_rationale: Optional[str] = None
 
     def __post_init__(self, *_: str, **kwargs: Any):
         if self._is_empty(self.id):
@@ -413,6 +415,12 @@ class Option(YAMLRoot):
 
         if self.excluded_by is not None and not isinstance(self.excluded_by, Attribution):
             self.excluded_by = Attribution(**as_dict(self.excluded_by))
+
+        if self.excluded_at is not None and not isinstance(self.excluded_at, XSDDate):
+            self.excluded_at = XSDDate(self.excluded_at)
+
+        if self.exclusion_rationale is not None and not isinstance(self.exclusion_rationale, str):
+            self.exclusion_rationale = str(self.exclusion_rationale)
 
         super().__post_init__(**kwargs)
 
@@ -1209,6 +1217,12 @@ slots.option__proposed_by = Slot(uri=ASTRA.proposed_by, name="option__proposed_b
 
 slots.option__excluded_by = Slot(uri=ASTRA.excluded_by, name="option__excluded_by", curie=ASTRA.curie('excluded_by'),
                    model_uri=ASTRA.option__excluded_by, domain=None, range=Optional[Union[dict, Attribution]])
+
+slots.option__excluded_at = Slot(uri=ASTRA.excluded_at, name="option__excluded_at", curie=ASTRA.curie('excluded_at'),
+                   model_uri=ASTRA.option__excluded_at, domain=None, range=Optional[Union[str, XSDDate]])
+
+slots.option__exclusion_rationale = Slot(uri=ASTRA.exclusion_rationale, name="option__exclusion_rationale", curie=ASTRA.curie('exclusion_rationale'),
+                   model_uri=ASTRA.option__exclusion_rationale, domain=None, range=Optional[str])
 
 slots.decision__id = Slot(uri=ASTRA.id, name="decision__id", curie=ASTRA.curie('id'),
                    model_uri=ASTRA.decision__id, domain=None, range=URIRef,

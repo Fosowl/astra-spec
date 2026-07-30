@@ -1,0 +1,37 @@
+# Invalid: excluded_at is not an ISO-8601 calendar date. A free-form stamp
+# defeats the point of the field, which is to make exclusions orderable.
+id: bad_excluded_at
+version: "0.1.0"
+name: Exclusion carrying a malformed date
+actors:
+  jane:
+    type: human
+    identifiers:
+      orcid: "0009-0000-0000-0000"
+inputs:
+  - id: corpus
+    type: data
+    description: Reference corpus
+outputs:
+  - id: retained
+    type: data
+    description: Retained sentences
+    inputs:
+      - corpus
+    decisions:
+      - threshold_rule
+    recipe:
+      command: python src/filter.py --rule {decisions.threshold_rule} --out {output}
+decisions:
+  threshold_rule:
+    label: Retention threshold rule
+    default: empirical_loo
+    options:
+      empirical_loo:
+        label: Empirical leave-one-out distribution
+      chisq_shrinkage:
+        label: Chi-squared quantile with shrunk covariance
+        excluded: true
+        excluded_reason: Confounds threshold source with covariance source.
+        excluded_by: jane
+        excluded_at: "early May 2026"
