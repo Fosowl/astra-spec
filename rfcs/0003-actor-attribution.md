@@ -7,7 +7,7 @@ authors:
   - Benjamin Navet (@BenjaminNavet)
   - Martin Legrand (@Fosowl)
 created: 2026-07-30
-tracking-issue: # link to the GitHub issue opened in Step 1
+tracking-issue: https://github.com/LightconeResearch/astra-spec/issues/53
 superseded-by: # RFC number, once another RFC replaces this one
 ---
 
@@ -89,16 +89,33 @@ same value: *either* an actor id (shorthand) *or* an object `{actor, role}` whos
 a flagged agent extension). No field grows a parallel `*_role` slot — the role lives
 as a sub-key inside the value.
 
-**3. Two optional attribution fields on the `Option` object:**
+**3. Four optional fields on the `Option` object** — two carrying attribution, two
+completing the exclusion record that attribution plugs into:
 
 | Field | Value | Meaning |
 |-------|-------|---------|
 | `proposed_by` | actor id, or `{actor, role}` | Who put this option on the table. |
-| `excluded_by` | actor id, or `{actor, role}` | Who ruled this option out. Pairs with the **existing** `excluded` / `excluded_reason` fields. |
+| `excluded_by` | actor id, or `{actor, role}` | Who ruled this option out. |
+| `excluded_at` | date (ISO-8601 `YYYY-MM-DD`) | When it was ruled out. |
+| `exclusion_rationale` | string | Why the decider found the evidence dispositive. |
 
-`excluded_by` is only meaningful on an option that was actually ruled out, so
-validation requires `excluded: true` alongside it. Without that pairing a record can
-name who excluded an option that is still live — a self-contradiction nothing else
+Together with the **existing** `excluded` / `excluded_reason`, an exclusion becomes a
+complete record: *that* it was ruled out, **what** was measured (`excluded_reason`),
+**who** ruled it out, **when**, and on **what judgment**. The last two are not
+attribution — they name no actor — but an exclusion attributed to a person without a
+date or a stated judgment is only half a record.
+
+`excluded_reason` and `exclusion_rationale` are deliberately distinct: the first
+reports what was *observed*, the second the *judgment* that made it dispositive. An
+option can be ruled out on a stated principle — "changes two variables at once, so the
+effect is confounded" — while its measured numbers, on their own, looked acceptable.
+Collapsing the two would flatten the evidence into the verdict and make the exclusion
+unauditable.
+
+All three of `excluded_by`, `excluded_at` and `exclusion_rationale` are only
+meaningful on an option that was actually ruled out, so validation requires
+`excluded: true` alongside any of them. Without that pairing a record can name who
+excluded — or when — an option that is still live, a self-contradiction nothing else
 would catch.
 
 **4. Two optional attribution fields on the `DecisionSelection` object** (the
@@ -151,20 +168,32 @@ on another object's `type`. The enum lives in the schema; the table is enforced 
 `astra-tools`. A reference implementation of both lives at
 `rfcs/0003-actor-attribution/reference/`.
 
-**Corrections use existing fields, not a new structure.** A mistake that was
-caught and replaced is recorded the way ASTRA already records a discarded
-option: the mistaken option carries `excluded: true` + `excluded_reason`, and the
-attribution names *who caught it* via `excluded_by: {actor: <human>, role:
-validation}`. ASTRA continues to record final **state**; the *history* of how
-that state was reached stays in the capture layer (e.g. TRACE). This RFC
-deliberately proposes **no** `corrections:` object and **no** new
-option-to-option relation beyond the existing `requires` / `incompatible_with`.
+**Corrections need no new structure.** A mistake that was caught and replaced is
+recorded the way ASTRA already records a discarded option: the mistaken option carries
+`excluded: true` + `excluded_reason`, with `excluded_by: {actor: <human>, role:
+validation}` naming *who caught it*, `excluded_at` *when*, and
+`exclusion_rationale` the judgment. This RFC deliberately proposes **no**
+`corrections:` object, **no** revision log, and **no** new option-to-option relation
+beyond the existing `requires` / `incompatible_with`.
+
+**Why a date is state, not history.** ASTRA records final **state**; the *history* of
+how that state was reached stays in the capture layer (e.g. TRACE). `excluded_at` does
+not breach that line. History is a *sequence* — proposed → accepted → revised →
+excluded, every transition retained; that is what TRACE keeps. `excluded_at` is a
+single scalar attribute of the one exclusion that stands, and the record says nothing
+about how many times the option changed hands before it did. What the date carries is
+**the dating of the evidence**: an option ruled out before a later result landed was
+judged on different evidence than one ruled out after. Without it a reader cannot tell
+whether an exclusion is still well-founded given what was learned since — which makes
+it a property of the conclusion's warrant, not a log entry. Day granularity is
+deliberate for the same reason: enough to date the evidence, not enough to invite
+reconstructing a timeline.
 
 Plain-language summary: *let an analysis optionally say who proposed and who
-excluded each option, and let a universe optionally say who selected and who
-reviewed each choice — with, if wanted, the role of each contribution (a CRediT
-term or a flagged agent extension) — without changing anything about how decisions
-or selections themselves are recorded.*
+excluded each option — and, for an exclusion, when and on what judgment — and let a
+universe optionally say who selected and who reviewed each choice, with, if wanted,
+the role of each contribution (a CRediT term or a flagged agent extension), without
+changing anything about how decisions or selections themselves are recorded.*
 
 ## Examples
 
@@ -235,13 +264,24 @@ excluded option whose exclusion is attributed to a `validation` contribution:
         proposed_by: {actor: jane, role: methodology}    # NEW
       standard_before_split:
         label: "StandardScaler, fit on the FULL dataset before the split"
-        proposed_by: {actor: assistant, role: methodology}         # NEW
-        excluded: true                                         # existing field — how a corrected mistake is recorded
-        excluded_reason: >-                                    # existing field
-          Data leakage: fitting before the train/test split let test-set
-          statistics contaminate the training features (0.97 -> 0.94 after refit).
-        excluded_by: {actor: jane, role: validation}     # NEW — the actor who caught it
+        proposed_by: {actor: assistant, role: methodology}   # NEW
+        excluded: true                                       # existing field
+        excluded_reason: >-                                  # existing field — what was OBSERVED
+          Held-out accuracy fell from 0.97 to 0.94 after refitting the scaler
+          on the training split alone.
+        excluded_by: {actor: jane, role: validation}         # NEW — who caught it
+        excluded_at: 2026-07-28                              # NEW — when
+        exclusion_rationale: >-                              # NEW — the JUDGMENT
+          Data leakage. Fitting before the train/test split let test-set
+          statistics contaminate the training features, so the higher number was
+          never a real gain — the option is unusable regardless of how it scores.
 ```
+
+That block is why `excluded_reason` and `exclusion_rationale` are separate slots.
+Read alone, the observation says the option scored *better* (0.97 vs 0.94); it is the
+judgment that explains why the better number is the disqualifying one. Flattened into
+a single field, a later reader sees an option discarded for outperforming its
+replacement.
 
 **Universe level** — a selection where an agent picked the model and a human
 signed off, alongside a plain-shorthand selection that carries no attribution.
@@ -296,7 +336,9 @@ proposed_by: {actor: assistant, role: executor}            # OK — executor is 
     ISO 7064 MOD 11-2 check digit is not expressible as a regex, so verifying it is
     astra-tools' job if it is wanted at all.
   - On the `Option` class, add optional slots `proposed_by` and `excluded_by`, each
-    with range `union(string, Attribution)` (the string is the actor-id shorthand).
+    with range `union(string, Attribution)` (the string is the actor-id shorthand),
+    plus `excluded_at` (`range: date`) and `exclusion_rationale` (a string) completing
+    the exclusion record alongside the existing `excluded` / `excluded_reason`.
   - On the `DecisionSelection` class, add optional slots `selected_by` and
     `reviewed_by` with the same `union(string, Attribution)` range, and change **both**
     universe `decisions` slots — on `Universe` and on `UniverseNode` — to a union that
@@ -332,10 +374,10 @@ proposed_by: {actor: assistant, role: executor}            # OK — executor is 
   allow-table, which admits `conceptualization` and `supervision` for humans only.
   Two further checks the schema states but cannot enforce: a human actor carries at
   least one of `name` or `identifiers` (and, if `identifiers` is present, at least one
-  id within it); and `excluded_by` appears only on an option that also carries
-  `excluded: true`. Both are expressed here rather than in LinkML — the first is a
-  disjunction, the second a boolean equality this schema has no idiom for. Absence of
-  any actor field is valid.
+  id within it); and `excluded_by`, `excluded_at` and `exclusion_rationale` each appear
+  only on an option that also carries `excluded: true`. Both are expressed here rather
+  than in LinkML — the first is a disjunction, the second a boolean equality this schema
+  has no idiom for. Absence of any actor field is valid.
 - **Reserved ids**: `actors` joins the reserved set in the shared id pattern, beside
   `inputs` / `outputs` / `decisions` / `findings` / `prior_insights` / `analyses` /
   `options` / `content`, so no entity can shadow the new top-level category. This
@@ -526,12 +568,33 @@ excluded_by:
   description: Who ruled this option out — an actor id, or an {actor, role} object. Pairs with the existing excluded / excluded_reason.
   any_of: [{range: string}, {range: Attribution}]
   inlined: true
+excluded_at:
+  range: date
+  description: >-
+    Calendar date on which the option was ruled out (ISO-8601, YYYY-MM-DD).
+    Completes the exclusion record: excluded_by says who, excluded_at says when.
+    Ordering matters when reading a decision space back — an option ruled out
+    before a later result landed was judged on different evidence than one ruled
+    out after. Only legal on an option marked excluded.
+exclusion_rationale:
+  description: >-
+    Why the decider found the evidence dispositive — the judgment, as distinct
+    from excluded_reason, which records what was measured or observed. An option
+    can be excluded on a stated principle ("changes two variables at once, so the
+    effect is confounded") while its excluded_reason reports numbers that on their
+    own looked acceptable. Separating the two keeps the evidence auditable without
+    flattening it into the judgment. Only legal on an option marked excluded.
 ```
 
-No `rules:` block is added to `Option`. The "`excluded_by` implies `excluded: true`"
-pairing is checked by astra-tools instead: `excluded` is a boolean, and this schema has
-no established idiom for asserting a boolean's *value* in a postcondition — its
-existing rules all assert presence or absence.
+`excluded_at` takes `range: date` rather than `datetime`: day granularity is enough to
+date the evidence an exclusion rested on, and a timestamp would invite reconstructing a
+chronology — which is history, and belongs in the capture layer.
+
+No `rules:` block is added to `Option`. The pairing — `excluded_by`, `excluded_at` and
+`exclusion_rationale` are each legal only on an option carrying `excluded: true` — is
+checked by astra-tools instead: `excluded` is a boolean, and this schema has no
+established idiom for asserting a boolean's *value* in a postcondition, its existing
+rules all asserting presence or absence.
 
 **`universe.yaml`** — add `- actor` to `imports`; add to `DecisionSelection.attributes`:
 
