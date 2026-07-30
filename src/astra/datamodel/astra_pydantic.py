@@ -98,13 +98,13 @@ class ActorType(str, Enum):
     """
 
 
-class HumanRole(str, Enum):
+class Role(str, Enum):
     """
-    Roles a human actor may hold — a CRediT subset that attaches to a single decision or selection, plus flagged extension roles.
+    Contribution roles that can attach to a single decision or selection — a CRediT subset plus three flagged extensions. The vocabulary is one closed enum; which values a given actor may hold depends on its type (conceptualization and supervision are human-only), and astra-tools enforces that per-role allow-table (see Attribution.role).
     """
     conceptualization = "conceptualization"
     """
-    Frames the decision — human-owned.
+    Frames the decision, sets what is at stake — human-only.
     """
     methodology = "methodology"
     """
@@ -128,49 +128,11 @@ class HumanRole(str, Enum):
     """
     supervision = "supervision"
     """
-    Oversight and final sign-off — human-owned.
+    Oversees the work, final sign-off — human-only.
     """
     planner = "planner"
     """
-    Extension — decomposes and sequences the work.
-    """
-    executor = "executor"
-    """
-    Extension — runs code or tools, returns results.
-    """
-    researcher = "researcher"
-    """
-    Extension — retrieves prior work, assembles context.
-    """
-
-
-class AgentRole(str, Enum):
-    """
-    Roles an agent may hold — HumanRole minus the two human-only terms (conceptualization, supervision).
-    """
-    methodology = "methodology"
-    """
-    Proposes an option or designs the method.
-    """
-    data_curation = "data_curation"
-    """
-    Selects or vouches for the data.
-    """
-    software = "software"
-    """
-    Writes or maintains the recipe code.
-    """
-    formal_analysis = "formal_analysis"
-    """
-    Runs the analysis, computes the result.
-    """
-    validation = "validation"
-    """
-    Checks, rules out an option, catches an error.
-    """
-    planner = "planner"
-    """
-    Extension — decomposes and sequences the work.
+    Extension — decomposes the task and sequences sub-analyses.
     """
     executor = "executor"
     """
@@ -225,7 +187,7 @@ class OutputType(str, Enum):
 
 class ResearcherId(ConfiguredBaseModel):
     """
-    One or more scholarly identifiers for a human actor. Any subset may be given, but a present record must carry at least one (declared via `any_of`; enforced at runtime by the astra-tools semantic layer). ORCID is the default scheme.
+    One or more scholarly identifiers for a human actor. If the record is present at all, at least one id is present (declared via `any_of`; enforced at runtime by the astra-tools semantic layer). ORCID is the default scheme. An actor may instead be identified by `name` alone — see Actor's rules.
     """
     linkml_meta: ClassVar[LinkMLMeta] = LinkMLMeta({'any_of': [{'slot_conditions': {'orcid': {'name': 'orcid',
                                                    'value_presence': 'PRESENT'}}},
@@ -287,7 +249,7 @@ class ResearcherId(ConfiguredBaseModel):
 
 class Actor(ConfiguredBaseModel):
     """
-    A contributor — a human researcher or a software agent — declared once in an analysis-level `actors` registry and referenced by key from attribution fields. One flat class with `type`-keyed rules rather than subclasses: a human carries `identifiers`, an agent carries `model` / `harness` / `version`.
+    A contributor — a human researcher or a software agent — declared once in an analysis-level `actors` registry and referenced by key from attribution fields. One flat class with `type`-keyed rules rather than subclasses: a human carries `name` and/or `identifiers`, an agent carries `model` / `harness` / `version`.
     """
     linkml_meta: ClassVar[LinkMLMeta] = LinkMLMeta({'from_schema': 'https://w3id.org/astra/actor',
          'rules': [{'postconditions': {'slot_conditions': {'model': {'name': 'model',
@@ -305,6 +267,20 @@ class Actor(ConfiguredBaseModel):
                     'preconditions': {'slot_conditions': {'type': {'equals_string': 'human',
                                                                    'name': 'type'}}},
                     'title': 'human_forbids_version'},
+                   {'description': 'A human actor must be identifiable by at least one '
+                                   'of `name` or `identifiers`. DOCUMENTATION ONLY — '
+                                   'an any_of postcondition survives into neither the '
+                                   'generated datamodel nor the JSON Schema, so '
+                                   'astra-tools enforces it (never inferring or '
+                                   'inventing an identifier; a missing identity is '
+                                   'asked of the user).',
+                    'postconditions': {'any_of': [{'slot_conditions': {'name': {'name': 'name',
+                                                                                'value_presence': 'PRESENT'}}},
+                                                  {'slot_conditions': {'identifiers': {'name': 'identifiers',
+                                                                                       'value_presence': 'PRESENT'}}}]},
+                    'preconditions': {'slot_conditions': {'type': {'equals_string': 'human',
+                                                                   'name': 'type'}}},
+                    'title': 'human_carries_identity'},
                    {'postconditions': {'slot_conditions': {'identifiers': {'name': 'identifiers',
                                                                            'value_presence': 'ABSENT'}}},
                     'preconditions': {'slot_conditions': {'type': {'equals_string': 'agent',
@@ -328,6 +304,8 @@ class Actor(ConfiguredBaseModel):
                        'Decision',
                        'Analysis']} })
     type: ActorType = Field(default=..., description="""Whether this actor is a human or an agent.""", json_schema_extra = { "linkml_meta": {'domain_of': ['Actor', 'Input', 'Output']} })
+    name: Optional[str] = Field(default=None, description="""Human-readable display name — \"Jane Doe\", or an agent's presentation name. What a rendered CRediT statement shows instead of the registry key.""", json_schema_extra = { "linkml_meta": {'domain_of': ['Actor', 'Analysis']} })
+    description: Optional[str] = Field(default=None, description="""Free-prose description of this actor.""", json_schema_extra = { "linkml_meta": {'domain_of': ['Actor', 'Universe', 'Input', 'Output', 'Option', 'Analysis']} })
     identifiers: Optional[ResearcherId] = Field(default=None, description="""Scholarly identifiers (human actors only).""", json_schema_extra = { "linkml_meta": {'domain_of': ['Actor']} })
     model: Optional[str] = Field(default=None, description="""Model name and version, e.g. claude-opus-5 (agent actors only).""", json_schema_extra = { "linkml_meta": {'domain_of': ['Actor']} })
     harness: Optional[str] = Field(default=None, description="""Software wrapper running the model, e.g. claude-code (agent actors only).""", json_schema_extra = { "linkml_meta": {'domain_of': ['Actor']} })
@@ -335,7 +313,7 @@ class Actor(ConfiguredBaseModel):
 
     @field_validator('id')
     def pattern_id(cls, v):
-        pattern=re.compile(r"^(?!(inputs|outputs|decisions|findings|prior_insights|analyses|options|content)$)[a-z][a-z0-9_]*$")
+        pattern=re.compile(r"^(?!(inputs|outputs|decisions|findings|prior_insights|analyses|options|content|actors)$)[a-z][a-z0-9_]*$")
         if isinstance(v, list):
             for element in v:
                 if isinstance(element, str) and not pattern.match(element):
@@ -349,13 +327,12 @@ class Actor(ConfiguredBaseModel):
 
 class Attribution(ConfiguredBaseModel):
     """
-    An actor together with the role they played. The shorthand form of an attribution slot is a bare actor id instead of this object. The role must be legal for the referenced actor's type (HumanRole for humans, AgentRole for agents); a `range` alone cannot express a dependency on another object's field, so astra-tools enforces the narrowing at validation time.
+    An actor together with the role they played. The shorthand form of an attribution slot is a bare actor id instead of this object.
     """
     linkml_meta: ClassVar[LinkMLMeta] = LinkMLMeta({'from_schema': 'https://w3id.org/astra/actor'})
 
     actor: str = Field(default=..., description="""Actor id (a key in an `actors` registry in scope).""", json_schema_extra = { "linkml_meta": {'domain_of': ['Attribution']} })
-    role: Optional[Union[AgentRole, HumanRole]] = Field(default=None, description="""Contribution role — a CRediT-subset term or a flagged extension, drawn from the enum matching the referenced actor's type.""", json_schema_extra = { "linkml_meta": {'any_of': [{'range': 'HumanRole'}, {'range': 'AgentRole'}],
-         'domain_of': ['Attribution']} })
+    role: Optional[Role] = Field(default=None, description="""Contribution role. astra-tools rejects a role not allowed for the referenced actor's type — conceptualization and supervision are human-only — because a `range` alone cannot express a dependency on another object's field.""", json_schema_extra = { "linkml_meta": {'domain_of': ['Attribution']} })
 
 
 class TextQuoteSelector(ConfiguredBaseModel):
@@ -407,7 +384,7 @@ class Evidence(ConfiguredBaseModel):
 
     @field_validator('id')
     def pattern_id(cls, v):
-        pattern=re.compile(r"^(?!(inputs|outputs|decisions|findings|prior_insights|analyses|options|content)$)[a-z][a-z0-9_]*$")
+        pattern=re.compile(r"^(?!(inputs|outputs|decisions|findings|prior_insights|analyses|options|content|actors)$)[a-z][a-z0-9_]*$")
         if isinstance(v, list):
             for element in v:
                 if isinstance(element, str) and not pattern.match(element):
@@ -459,7 +436,7 @@ class Insight(ConfiguredBaseModel):
 
     @field_validator('id')
     def pattern_id(cls, v):
-        pattern=re.compile(r"^(?!(inputs|outputs|decisions|findings|prior_insights|analyses|options|content)$)[a-z][a-z0-9_]*$")
+        pattern=re.compile(r"^(?!(inputs|outputs|decisions|findings|prior_insights|analyses|options|content|actors)$)[a-z][a-z0-9_]*$")
         if isinstance(v, list):
             for element in v:
                 if isinstance(element, str) and not pattern.match(element):
@@ -517,7 +494,7 @@ class UniverseNode(ConfiguredBaseModel):
 
     @field_validator('id')
     def pattern_id(cls, v):
-        pattern=re.compile(r"^(?!(inputs|outputs|decisions|findings|prior_insights|analyses|options|content)$)[a-z][a-z0-9_]*$")
+        pattern=re.compile(r"^(?!(inputs|outputs|decisions|findings|prior_insights|analyses|options|content|actors)$)[a-z][a-z0-9_]*$")
         if isinstance(v, list):
             for element in v:
                 if isinstance(element, str) and not pattern.match(element):
@@ -545,7 +522,7 @@ class Universe(ConfiguredBaseModel):
                        'Option',
                        'Decision',
                        'Analysis']} })
-    description: Optional[str] = Field(default=None, description="""Free-prose description of this universe.""", json_schema_extra = { "linkml_meta": {'domain_of': ['Universe', 'Input', 'Output', 'Option', 'Analysis']} })
+    description: Optional[str] = Field(default=None, description="""Free-prose description of this universe.""", json_schema_extra = { "linkml_meta": {'domain_of': ['Actor', 'Universe', 'Input', 'Output', 'Option', 'Analysis']} })
     decisions: Optional[dict[str, Union[DecisionSelection, str]]] = Field(default=None, description="""Root-level decision selections — scalar shorthand or an object with option_id plus attribution fields.""", json_schema_extra = { "linkml_meta": {'any_of': [{'range': 'string'}, {'range': 'DecisionSelection'}],
          'domain_of': ['UniverseNode', 'Universe', 'Output', 'Analysis']} })
     analyses: Optional[dict[str, UniverseNode]] = Field(default=None, description="""Sub-analysis universe selections""", json_schema_extra = { "linkml_meta": {'domain_of': ['UniverseNode', 'Universe', 'Analysis']} })
@@ -688,7 +665,7 @@ class Input(ConfiguredBaseModel):
                        'Analysis']} })
     label: Optional[str] = Field(default=None, description="""Short human-readable name for compact rendering (margin glyphs, breadcrumbs, card titles). Optional; tooling falls back to id when absent.""", json_schema_extra = { "linkml_meta": {'domain_of': ['Insight', 'Input', 'Output', 'Option', 'Decision']} })
     type: Optional[InputType] = Field(default=None, description="""Type of input. Required when `from` is unset; forbidden when `from` is set (inherited from the source).""", json_schema_extra = { "linkml_meta": {'domain_of': ['Actor', 'Input', 'Output']} })
-    description: Optional[str] = Field(default=None, description="""Free-prose description of this input.""", json_schema_extra = { "linkml_meta": {'domain_of': ['Universe', 'Input', 'Output', 'Option', 'Analysis']} })
+    description: Optional[str] = Field(default=None, description="""Free-prose description of this input.""", json_schema_extra = { "linkml_meta": {'domain_of': ['Actor', 'Universe', 'Input', 'Output', 'Option', 'Analysis']} })
     source: Optional[str] = Field(default=None, description="""URI or path to the data source""", json_schema_extra = { "linkml_meta": {'domain_of': ['Input']} })
     ref: Optional[str] = Field(default=None, description="""Reference to another ASTRA analysis""", json_schema_extra = { "linkml_meta": {'domain_of': ['Input']} })
     ref_version: Optional[str] = Field(default=None, description="""Version of the referenced analysis""", json_schema_extra = { "linkml_meta": {'domain_of': ['Input']} })
@@ -709,7 +686,7 @@ class Input(ConfiguredBaseModel):
 
     @field_validator('id')
     def pattern_id(cls, v):
-        pattern=re.compile(r"^(?!(inputs|outputs|decisions|findings|prior_insights|analyses|options|content)$)[a-z][a-z0-9_]*$")
+        pattern=re.compile(r"^(?!(inputs|outputs|decisions|findings|prior_insights|analyses|options|content|actors)$)[a-z][a-z0-9_]*$")
         if isinstance(v, list):
             for element in v:
                 if isinstance(element, str) and not pattern.match(element):
@@ -792,7 +769,7 @@ class Output(ConfiguredBaseModel):
                        'Analysis']} })
     label: Optional[str] = Field(default=None, description="""Short human-readable name for compact rendering (margin glyphs, breadcrumbs, card titles). Optional; tooling falls back to id when absent.""", json_schema_extra = { "linkml_meta": {'domain_of': ['Insight', 'Input', 'Output', 'Option', 'Decision']} })
     type: Optional[OutputType] = Field(default=None, description="""Type of output. Required when `from` is unset; forbidden when `from` is set (inherited from the source).""", json_schema_extra = { "linkml_meta": {'domain_of': ['Actor', 'Input', 'Output']} })
-    description: Optional[str] = Field(default=None, description="""Free-prose description of this output.""", json_schema_extra = { "linkml_meta": {'domain_of': ['Universe', 'Input', 'Output', 'Option', 'Analysis']} })
+    description: Optional[str] = Field(default=None, description="""Free-prose description of this output.""", json_schema_extra = { "linkml_meta": {'domain_of': ['Actor', 'Universe', 'Input', 'Output', 'Option', 'Analysis']} })
     inputs: Optional[list[str]] = Field(default=None, description="""IDs of upstream artifacts this output depends on. Each reference resolves to either an Input declared on the surrounding analysis (an external dataset/file/analysis) or a sibling Output (another artifact in scope). Runners materialize the upstream artifacts before invoking the recipe and surface the resolved input map to it (Snakemake-style `{input.x}` substitution, env vars, sidecar JSON — runner's choice).
 References use plain artifact IDs and resolve through any `from:` chain in the surrounding analysis scope. An aliased Input (one with `from:`) is a valid local reference here; the runner walks the chain to the source.""", json_schema_extra = { "linkml_meta": {'domain_of': ['Output', 'Analysis']} })
     decisions: Optional[list[str]] = Field(default=None, description="""Decision IDs (in the surrounding scope) that parameterize this output. Declares the output's provenance contract: re-running with a different option for any listed decision must be expected to produce a different output.
@@ -815,7 +792,7 @@ References use plain decision IDs and resolve through any `from:` chain in the s
 
     @field_validator('id')
     def pattern_id(cls, v):
-        pattern=re.compile(r"^(?!(inputs|outputs|decisions|findings|prior_insights|analyses|options|content)$)[a-z][a-z0-9_]*$")
+        pattern=re.compile(r"^(?!(inputs|outputs|decisions|findings|prior_insights|analyses|options|content|actors)$)[a-z][a-z0-9_]*$")
         if isinstance(v, list):
             for element in v:
                 if isinstance(element, str) and not pattern.match(element):
@@ -844,7 +821,7 @@ class Option(ConfiguredBaseModel):
                        'Decision',
                        'Analysis']} })
     label: str = Field(default=..., description="""Human-readable name for the option""", json_schema_extra = { "linkml_meta": {'domain_of': ['Insight', 'Input', 'Output', 'Option', 'Decision']} })
-    description: Optional[str] = Field(default=None, description="""Free-prose description of this option.""", json_schema_extra = { "linkml_meta": {'domain_of': ['Universe', 'Input', 'Output', 'Option', 'Analysis']} })
+    description: Optional[str] = Field(default=None, description="""Free-prose description of this option.""", json_schema_extra = { "linkml_meta": {'domain_of': ['Actor', 'Universe', 'Input', 'Output', 'Option', 'Analysis']} })
     insights: Optional[list[str]] = Field(default=None, description="""Insight IDs supporting this option""", json_schema_extra = { "linkml_meta": {'domain_of': ['InsightCollection', 'Option']} })
     incompatible_with: Optional[list[str]] = Field(default=None, description="""Decision.option pairs that cannot be selected together""", json_schema_extra = { "linkml_meta": {'domain_of': ['Option']} })
     requires: Optional[list[str]] = Field(default=None, description="""Decision.option pairs that must also be selected""", json_schema_extra = { "linkml_meta": {'domain_of': ['Option']} })
@@ -859,7 +836,7 @@ class Option(ConfiguredBaseModel):
 
     @field_validator('id')
     def pattern_id(cls, v):
-        pattern=re.compile(r"^(?!(inputs|outputs|decisions|findings|prior_insights|analyses|options|content)$)[a-z][a-z0-9_]*$")
+        pattern=re.compile(r"^(?!(inputs|outputs|decisions|findings|prior_insights|analyses|options|content|actors)$)[a-z][a-z0-9_]*$")
         if isinstance(v, list):
             for element in v:
                 if isinstance(element, str) and not pattern.match(element):
@@ -960,7 +937,7 @@ class Decision(ConfiguredBaseModel):
 
     @field_validator('id')
     def pattern_id(cls, v):
-        pattern=re.compile(r"^(?!(inputs|outputs|decisions|findings|prior_insights|analyses|options|content)$)[a-z][a-z0-9_]*$")
+        pattern=re.compile(r"^(?!(inputs|outputs|decisions|findings|prior_insights|analyses|options|content|actors)$)[a-z][a-z0-9_]*$")
         if isinstance(v, list):
             for element in v:
                 if isinstance(element, str) and not pattern.match(element):
@@ -989,8 +966,8 @@ class Analysis(ConfiguredBaseModel):
                        'Decision',
                        'Analysis']} })
     version: Optional[str] = Field(default=None, description="""ASTRA specification version""", json_schema_extra = { "linkml_meta": {'domain_of': ['Actor', 'Evidence', 'Analysis']} })
-    name: Optional[str] = Field(default=None, description="""Human-readable name for the analysis""", json_schema_extra = { "linkml_meta": {'domain_of': ['Analysis']} })
-    description: Optional[str] = Field(default=None, description="""Free-prose description of this analysis — the same optional field every other content object carries (Input, Output, Option, Universe). A short human orientation lives here; richer write-ups (figures, citations, multi-page reports) are authored externally and reference analysis elements by tree-path rather than restating them.""", json_schema_extra = { "linkml_meta": {'domain_of': ['Universe', 'Input', 'Output', 'Option', 'Analysis']} })
+    name: Optional[str] = Field(default=None, description="""Human-readable name for the analysis""", json_schema_extra = { "linkml_meta": {'domain_of': ['Actor', 'Analysis']} })
+    description: Optional[str] = Field(default=None, description="""Free-prose description of this analysis — the same optional field every other content object carries (Input, Output, Option, Universe). A short human orientation lives here; richer write-ups (figures, citations, multi-page reports) are authored externally and reference analysis elements by tree-path rather than restating them.""", json_schema_extra = { "linkml_meta": {'domain_of': ['Actor', 'Universe', 'Input', 'Output', 'Option', 'Analysis']} })
     tags: Optional[list[str]] = Field(default=None, description="""Tags for categorization""", json_schema_extra = { "linkml_meta": {'domain_of': ['Insight', 'Decision', 'Analysis']} })
     inputs: Optional[list[Input]] = Field(default=None, description="""Inputs for this analysis""", json_schema_extra = { "linkml_meta": {'domain_of': ['Output', 'Analysis']} })
     outputs: Optional[list[Output]] = Field(default=None, description="""Expected outputs from this analysis""", json_schema_extra = { "linkml_meta": {'domain_of': ['Analysis']} })
@@ -1004,7 +981,7 @@ class Analysis(ConfiguredBaseModel):
 
     @field_validator('id')
     def pattern_id(cls, v):
-        pattern=re.compile(r"^(?!(inputs|outputs|decisions|findings|prior_insights|analyses|options|content)$)[a-z][a-z0-9_]*$")
+        pattern=re.compile(r"^(?!(inputs|outputs|decisions|findings|prior_insights|analyses|options|content|actors)$)[a-z][a-z0-9_]*$")
         if isinstance(v, list):
             for element in v:
                 if isinstance(element, str) and not pattern.match(element):

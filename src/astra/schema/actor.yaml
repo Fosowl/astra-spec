@@ -2,9 +2,10 @@
 id: https://w3id.org/astra/actor
 name: actor
 description: |-
-  Contributors (human researchers and software agents) and their roles.
-  Provides the actor registry and the {actor, role} attribution value
-  shared by analysis options and universe selections (RFC-0003).
+  Contributors — human researchers and software agents — and the roles
+  they hold on a decision or a universe selection. Provides the actor
+  registry and the {actor, role} attribution value shared by analysis
+  options and universe selections (RFC-0003).
 # Placeholder version. The real version is injected at build time from the
 # latest git tag (or RELEASE_VERSION) — see `_stage-versioned` in the justfile.
 version: 0.0.0
@@ -34,13 +35,16 @@ enums:
       agent:
         description: A software agent (a model running inside a harness).
 
-  HumanRole:
+  Role:
     description: >-
-      Roles a human actor may hold — a CRediT subset that attaches to a
-      single decision or selection, plus flagged extension roles.
+      Contribution roles that can attach to a single decision or selection —
+      a CRediT subset plus three flagged extensions. The vocabulary is one
+      closed enum; which values a given actor may hold depends on its type
+      (conceptualization and supervision are human-only), and astra-tools
+      enforces that per-role allow-table (see Attribution.role).
     permissible_values:
       conceptualization:
-        description: Frames the decision — human-owned.
+        description: Frames the decision, sets what is at stake — human-only.
       methodology:
         description: Proposes an option or designs the method.
       data_curation:
@@ -52,31 +56,9 @@ enums:
       validation:
         description: Checks, rules out an option, catches an error.
       supervision:
-        description: Oversight and final sign-off — human-owned.
+        description: Oversees the work, final sign-off — human-only.
       planner:
-        description: Extension — decomposes and sequences the work.
-      executor:
-        description: Extension — runs code or tools, returns results.
-      researcher:
-        description: Extension — retrieves prior work, assembles context.
-
-  AgentRole:
-    description: >-
-      Roles an agent may hold — HumanRole minus the two human-only terms
-      (conceptualization, supervision).
-    permissible_values:
-      methodology:
-        description: Proposes an option or designs the method.
-      data_curation:
-        description: Selects or vouches for the data.
-      software:
-        description: Writes or maintains the recipe code.
-      formal_analysis:
-        description: Runs the analysis, computes the result.
-      validation:
-        description: Checks, rules out an option, catches an error.
-      planner:
-        description: Extension — decomposes and sequences the work.
+        description: Extension — decomposes the task and sequences sub-analyses.
       executor:
         description: Extension — runs code or tools, returns results.
       researcher:
@@ -90,12 +72,16 @@ classes:
 
   ResearcherId:
     description: >-
-      One or more scholarly identifiers for a human actor. Any subset may
-      be given, but a present record must carry at least one (declared via
-      `any_of`; enforced at runtime by the astra-tools semantic layer).
-      ORCID is the default scheme.
+      One or more scholarly identifiers for a human actor. If the record is
+      present at all, at least one id is present (declared via `any_of`;
+      enforced at runtime by the astra-tools semantic layer). ORCID is the
+      default scheme. An actor may instead be identified by `name` alone —
+      see Actor's rules.
     attributes:
       orcid:
+        # Shape only (0000-0000-0000-000X): the ISO 7064 MOD 11-2 check
+        # digit is not expressible as a regex; verifying it is astra-tools'
+        # job if wanted at all.
         pattern: "^\\d{4}-\\d{4}-\\d{4}-\\d{3}[0-9X]$"
         description: ORCID iD (https://orcid.org).
       arxiv:
@@ -108,7 +94,11 @@ classes:
         description: Wikidata entity id (https://www.wikidata.org).
       google_scholar:
         description: Google Scholar profile id.
-    any_of:  # at least one identifier present
+    any_of:  # at least one identifier present. DOCUMENTATION ONLY — a
+             # class-level boolean expression survives into neither the
+             # generated datamodel nor the JSON Schema, so astra-tools
+             # enforces this. Nor can `rules:` express it: "at least one
+             # of five" is a disjunction, not a precondition rule.
       - slot_conditions:
           orcid:
             value_presence: PRESENT
@@ -130,17 +120,24 @@ classes:
       A contributor — a human researcher or a software agent — declared
       once in an analysis-level `actors` registry and referenced by key
       from attribution fields. One flat class with `type`-keyed rules
-      rather than subclasses: a human carries `identifiers`, an agent
-      carries `model` / `harness` / `version`.
+      rather than subclasses: a human carries `name` and/or `identifiers`,
+      an agent carries `model` / `harness` / `version`.
     attributes:
       id:
         identifier: true
-        pattern: "^(?!(inputs|outputs|decisions|findings|prior_insights|analyses|options|content)$)[a-z][a-z0-9_]*$"
+        pattern: "^(?!(inputs|outputs|decisions|findings|prior_insights|analyses|options|content|actors)$)[a-z][a-z0-9_]*$"
         description: Actor identifier (the key in the actors map).
       type:
         range: ActorType
         required: true
         description: Whether this actor is a human or an agent.
+      name:
+        description: >-
+          Human-readable display name — "Jane Doe", or an agent's
+          presentation name. What a rendered CRediT statement shows
+          instead of the registry key.
+      description:
+        description: Free-prose description of this actor.
       identifiers:
         range: ResearcherId
         inlined: true
@@ -183,6 +180,26 @@ classes:
           slot_conditions:
             version:
               value_presence: ABSENT
+      - title: human_carries_identity
+        description: >-
+          A human actor must be identifiable by at least one of `name` or
+          `identifiers`. DOCUMENTATION ONLY — an any_of postcondition
+          survives into neither the generated datamodel nor the JSON
+          Schema, so astra-tools enforces it (never inferring or
+          inventing an identifier; a missing identity is asked of the
+          user).
+        preconditions:
+          slot_conditions:
+            type:
+              equals_string: human
+        postconditions:
+          any_of:
+            - slot_conditions:
+                name:
+                  value_presence: PRESENT
+            - slot_conditions:
+                identifiers:
+                  value_presence: PRESENT
       - title: agent_forbids_identifiers
         preconditions:
           slot_conditions:
@@ -206,19 +223,15 @@ classes:
   Attribution:
     description: >-
       An actor together with the role they played. The shorthand form of
-      an attribution slot is a bare actor id instead of this object. The
-      role must be legal for the referenced actor's type (HumanRole for
-      humans, AgentRole for agents); a `range` alone cannot express a
-      dependency on another object's field, so astra-tools enforces the
-      narrowing at validation time.
+      an attribution slot is a bare actor id instead of this object.
     attributes:
       actor:
         required: true
         description: Actor id (a key in an `actors` registry in scope).
       role:
-        any_of:
-          - range: HumanRole
-          - range: AgentRole
+        range: Role
         description: >-
-          Contribution role — a CRediT-subset term or a flagged extension,
-          drawn from the enum matching the referenced actor's type.
+          Contribution role. astra-tools rejects a role not allowed for
+          the referenced actor's type — conceptualization and supervision
+          are human-only — because a `range` alone cannot express a
+          dependency on another object's field.

@@ -35,7 +35,7 @@ imports:
 # slot and by `when`/`requires`/`incompatible_with`) cannot be
 # silently shadowed by an entity named after a category. Reserved set:
 #   inputs, outputs, decisions, findings, prior_insights, analyses,
-#   options, content
+#   options, content, actors
 # Applied to every entity ID: Input, Output, Option, Decision,
 # Analysis, Insight, Evidence.
 #
@@ -232,7 +232,7 @@ classes:
     attributes:
       id:
         identifier: true
-        pattern: "^(?!(inputs|outputs|decisions|findings|prior_insights|analyses|options|content)$)[a-z][a-z0-9_]*$"
+        pattern: "^(?!(inputs|outputs|decisions|findings|prior_insights|analyses|options|content|actors)$)[a-z][a-z0-9_]*$"
         description: Unique identifier for the input
       label:
         description: >-
@@ -321,7 +321,7 @@ classes:
     attributes:
       id:
         identifier: true
-        pattern: "^(?!(inputs|outputs|decisions|findings|prior_insights|analyses|options|content)$)[a-z][a-z0-9_]*$"
+        pattern: "^(?!(inputs|outputs|decisions|findings|prior_insights|analyses|options|content|actors)$)[a-z][a-z0-9_]*$"
         description: Unique identifier for the output
       label:
         description: >-
@@ -410,7 +410,7 @@ classes:
     attributes:
       id:
         identifier: true
-        pattern: "^(?!(inputs|outputs|decisions|findings|prior_insights|analyses|options|content)$)[a-z][a-z0-9_]*$"
+        pattern: "^(?!(inputs|outputs|decisions|findings|prior_insights|analyses|options|content|actors)$)[a-z][a-z0-9_]*$"
         description: Option identifier (the key in the options map)
       label:
         required: true
@@ -499,7 +499,7 @@ classes:
     attributes:
       id:
         identifier: true
-        pattern: "^(?!(inputs|outputs|decisions|findings|prior_insights|analyses|options|content)$)[a-z][a-z0-9_]*$"
+        pattern: "^(?!(inputs|outputs|decisions|findings|prior_insights|analyses|options|content|actors)$)[a-z][a-z0-9_]*$"
         description: Decision identifier (the key in the decisions map)
       label:
         description: Human-readable name for the decision
@@ -559,7 +559,7 @@ classes:
     attributes:
       id:
         identifier: true
-        pattern: "^(?!(inputs|outputs|decisions|findings|prior_insights|analyses|options|content)$)[a-z][a-z0-9_]*$"
+        pattern: "^(?!(inputs|outputs|decisions|findings|prior_insights|analyses|options|content|actors)$)[a-z][a-z0-9_]*$"
         description: Analysis identifier (used as key when nested as a sub-analysis)
       version:
         pattern: "^\\d+\\.\\d+(\\.\\d+)?$"

@@ -582,12 +582,14 @@ Declared in the `actors:` registry on an analysis and referenced by key from att
 | Field | Type | Required | Meaning |
 |---|---|---:|---|
 | `type` | `human` \| `agent` | Yes | Kind of contributor. |
+| `name` | `string` | No | Display name — what a rendered CRediT statement shows. |
+| `description` | `string` | No | Free-prose description of this actor. |
 | `identifiers` | `ResearcherId` | No | Scholarly ids — human actors only; at least one when present. |
 | `model` | `string` | No | Model name — agent actors only (required for agents). |
 | `harness` | `string` | No | Software wrapper running the model — agent actors only. |
 | `version` | `string` | No | Version or date stamp of the agent configuration — agent actors only. |
 
-`ResearcherId` groups optional `orcid`, `arxiv`, `openalex`, `wikidata`, and `google_scholar` ids. An `Attribution` is `{actor, role}`: `actor` is a registry key, `role` a CRediT-derived term legal for that actor's type (`HumanRole` / `AgentRole` enums; `conceptualization` and `supervision` are human-only). The bare actor-id string is accepted everywhere as shorthand for an `Attribution` without a role.
+A human actor must be identifiable by at least one of `name` or `identifiers` — an ORCID is recommended, a bare `name` is the honest minimum; tooling must never infer or invent an identifier. `ResearcherId` groups optional `orcid`, `arxiv`, `openalex`, `wikidata`, and `google_scholar` ids. An `Attribution` is `{actor, role}`: `actor` is a registry key, `role` a term from the single closed `Role` enum, constrained per actor type by validation (`conceptualization` and `supervision` are human-only). The bare actor-id string is accepted everywhere as shorthand for an `Attribution` without a role.
 
 ### Insight and Evidence
 
