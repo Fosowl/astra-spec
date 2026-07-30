@@ -1,0 +1,57 @@
+# Valid: the full exclusion record — who ruled an option out, when, on what
+# judgment, and against what evidence. Exercises excluded_by / excluded_at /
+# exclusion_rationale alongside the existing excluded / excluded_reason pair.
+id: exclusion_timing
+version: "0.1.0"
+name: Threshold selection with a dated, attributed exclusion
+description: >-
+  Minimal analysis in which one option is rejected despite landing inside
+  the acceptable range, recording the judgment separately from the
+  measurement that motivated it.
+actors:
+  jane:
+    type: human
+    identifiers:
+      orcid: "0009-0000-0000-0000"
+  assistant:
+    type: agent
+    model: claude-opus-5
+    harness: claude-code
+    version: "2026-07"
+inputs:
+  - id: corpus
+    type: data
+    description: Reference corpus
+    source: data/corpus.csv
+outputs:
+  - id: retained
+    type: data
+    description: Retained sentences
+    inputs:
+      - corpus
+    decisions:
+      - threshold_rule
+    recipe:
+      command: python src/filter.py --rule {decisions.threshold_rule} --out {output}
+decisions:
+  threshold_rule:
+    label: Retention threshold rule
+    rationale: How the retention cutoff is derived.
+    default: empirical_loo
+    options:
+      empirical_loo:
+        label: Empirical leave-one-out distribution
+        proposed_by: {actor: jane, role: methodology}
+      chisq_shrinkage:
+        label: Chi-squared quantile with shrunk covariance
+        proposed_by: {actor: assistant, role: methodology}
+        excluded: true
+        excluded_reason: >-
+          Reaches 68.6% retention, squarely inside the desired 65 to 75
+          band.
+        excluded_by: {actor: jane, role: validation}
+        excluded_at: "2026-05-09"
+        exclusion_rationale: >-
+          Inside the band, rejected anyway: the shrinkage weight has no
+          principled basis, and the variant changes the threshold source
+          and the covariance source at once, so the effect is confounded.

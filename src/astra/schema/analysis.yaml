@@ -450,6 +450,25 @@ classes:
           Who ruled this option out — an actor id, or an {actor, role}
           object. Pairs with the existing excluded / excluded_reason
           fields; only legal on an option marked excluded.
+      excluded_at:
+        range: date
+        description: >-
+          Calendar date on which the option was ruled out (ISO-8601,
+          YYYY-MM-DD). Completes the exclusion record: `excluded_by` says
+          who, `excluded_at` says when. Ordering matters when reading a
+          decision space back — an option ruled out before a later result
+          landed was judged on different evidence than one ruled out
+          after. Only legal on an option marked excluded.
+      exclusion_rationale:
+        description: >-
+          Why the decider found the evidence dispositive — the judgment,
+          as distinct from `excluded_reason`, which records what was
+          measured or observed. An option can be excluded on a stated
+          principle ("changes two variables at once, so the effect is
+          confounded") while its `excluded_reason` reports numbers that
+          on their own looked acceptable. Separating the two keeps the
+          evidence auditable without flattening it into the judgment.
+          Only legal on an option marked excluded.
 
   Decision:
     description: >-

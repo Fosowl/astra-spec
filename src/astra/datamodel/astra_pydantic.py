@@ -854,6 +854,8 @@ class Option(ConfiguredBaseModel):
          'domain_of': ['Option']} })
     excluded_by: Optional[Union[Attribution, str]] = Field(default=None, description="""Who ruled this option out — an actor id, or an {actor, role} object. Pairs with the existing excluded / excluded_reason fields; only legal on an option marked excluded.""", json_schema_extra = { "linkml_meta": {'any_of': [{'range': 'string'}, {'range': 'Attribution'}],
          'domain_of': ['Option']} })
+    excluded_at: Optional[date] = Field(default=None, description="""Calendar date on which the option was ruled out (ISO-8601, YYYY-MM-DD). Completes the exclusion record: `excluded_by` says who, `excluded_at` says when. Ordering matters when reading a decision space back — an option ruled out before a later result landed was judged on different evidence than one ruled out after. Only legal on an option marked excluded.""", json_schema_extra = { "linkml_meta": {'domain_of': ['Option']} })
+    exclusion_rationale: Optional[str] = Field(default=None, description="""Why the decider found the evidence dispositive — the judgment, as distinct from `excluded_reason`, which records what was measured or observed. An option can be excluded on a stated principle (\"changes two variables at once, so the effect is confounded\") while its `excluded_reason` reports numbers that on their own looked acceptable. Separating the two keeps the evidence auditable without flattening it into the judgment. Only legal on an option marked excluded.""", json_schema_extra = { "linkml_meta": {'domain_of': ['Option']} })
 
     @field_validator('id')
     def pattern_id(cls, v):
