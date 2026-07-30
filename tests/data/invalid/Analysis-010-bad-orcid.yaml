@@ -1,0 +1,14 @@
+# Invalid: ORCID must match the 0000-0000-0000-000X shape.
+id: bad_orcid
+name: Malformed ORCID
+inputs:
+  - id: data
+    type: data
+outputs:
+  - id: result
+    type: metric
+actors:
+  jane:
+    type: human
+    identifiers:
+      orcid: "not-an-orcid"

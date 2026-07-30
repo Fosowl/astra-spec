@@ -1,0 +1,28 @@
+# VALID per the schema, but not yet loadable by the generated *dataclass*
+# model: attribution slots accept a bare actor-id string as shorthand for
+# the {actor, role} object (an any_of union), and pythongen's post-init
+# does `Attribution(**value)`, which breaks on a string. The Pydantic
+# model handles both forms correctly (Union[Attribution, str]); astra-tools
+# validates the shorthand via that path.
+id: shorthand_attribution
+version: "0.1.0"
+name: Bare actor-id shorthand on attribution fields
+actors:
+  jane:
+    type: human
+    identifiers:
+      orcid: "0009-0000-0000-0000"
+inputs:
+  - id: data
+    type: data
+outputs:
+  - id: result
+    type: metric
+decisions:
+  method:
+    label: Method
+    default: a
+    options:
+      a:
+        label: Option A
+        proposed_by: jane   # shorthand form — the origin form, still accepted

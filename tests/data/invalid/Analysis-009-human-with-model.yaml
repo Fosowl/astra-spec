@@ -1,0 +1,16 @@
+# Invalid: a human actor must not carry agent fields (model/harness/version);
+# violates the human_carries_identifiers_not_agent_fields rule.
+id: bad_human_actor
+name: Human actor with agent fields
+inputs:
+  - id: data
+    type: data
+outputs:
+  - id: result
+    type: metric
+actors:
+  jane:
+    type: human
+    identifiers:
+      orcid: "0009-0000-0000-0000"
+    model: claude-opus-5

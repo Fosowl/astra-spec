@@ -1,5 +1,5 @@
 # Auto generated from analysis.yaml by pythongen.py version: 0.0.1
-# Generation date: 2026-07-29T17:25:03
+# Generation date: 2026-07-30T10:13:43
 # Schema: analysis
 #
 # id: https://w3id.org/astra/analysis
@@ -95,6 +95,10 @@ class DecisionId(extended_str):
 
 
 class AnalysisId(extended_str):
+    pass
+
+
+class ActorId(extended_str):
     pass
 
 
@@ -369,6 +373,8 @@ class Option(YAMLRoot):
     requires: Optional[Union[str, list[str]]] = empty_list()
     excluded: Optional[Union[bool, Bool]] = None
     excluded_reason: Optional[str] = None
+    proposed_by: Optional[Union[dict, "Attribution"]] = None
+    excluded_by: Optional[Union[dict, "Attribution"]] = None
 
     def __post_init__(self, *_: str, **kwargs: Any):
         if self._is_empty(self.id):
@@ -401,6 +407,12 @@ class Option(YAMLRoot):
 
         if self.excluded_reason is not None and not isinstance(self.excluded_reason, str):
             self.excluded_reason = str(self.excluded_reason)
+
+        if self.proposed_by is not None and not isinstance(self.proposed_by, Attribution):
+            self.proposed_by = Attribution(**as_dict(self.proposed_by))
+
+        if self.excluded_by is not None and not isinstance(self.excluded_by, Attribution):
+            self.excluded_by = Attribution(**as_dict(self.excluded_by))
 
         super().__post_init__(**kwargs)
 
@@ -491,6 +503,7 @@ class Analysis(YAMLRoot):
     container: Optional[str] = None
     path: Optional[str] = None
     analyses: Optional[Union[dict[Union[str, AnalysisId], Union[dict, "Analysis"]], list[Union[dict, "Analysis"]]]] = empty_dict()
+    actors: Optional[Union[dict[Union[str, ActorId], Union[dict, "Actor"]], list[Union[dict, "Actor"]]]] = empty_dict()
 
     def __post_init__(self, *_: str, **kwargs: Any):
         if self._is_empty(self.id):
@@ -528,6 +541,124 @@ class Analysis(YAMLRoot):
             self.path = str(self.path)
 
         self._normalize_inlined_as_dict(slot_name="analyses", slot_type=Analysis, key_name="id", keyed=True)
+
+        self._normalize_inlined_as_dict(slot_name="actors", slot_type=Actor, key_name="id", keyed=True)
+
+        super().__post_init__(**kwargs)
+
+
+@dataclass(repr=False)
+class ResearcherId(YAMLRoot):
+    """
+    One or more scholarly identifiers for a human actor. Any subset may be given, but a present record must carry at
+    least one (declared via `any_of`; enforced at runtime by the astra-tools semantic layer). ORCID is the default
+    scheme.
+    """
+    _inherited_slots: ClassVar[list[str]] = []
+
+    class_class_uri: ClassVar[URIRef] = ASTRA["ResearcherId"]
+    class_class_curie: ClassVar[str] = "astra:ResearcherId"
+    class_name: ClassVar[str] = "ResearcherId"
+    class_model_uri: ClassVar[URIRef] = ASTRA.ResearcherId
+
+    orcid: Optional[str] = None
+    arxiv: Optional[str] = None
+    openalex: Optional[str] = None
+    wikidata: Optional[str] = None
+    google_scholar: Optional[str] = None
+
+    def __post_init__(self, *_: str, **kwargs: Any):
+        if self.orcid is not None and not isinstance(self.orcid, str):
+            self.orcid = str(self.orcid)
+
+        if self.arxiv is not None and not isinstance(self.arxiv, str):
+            self.arxiv = str(self.arxiv)
+
+        if self.openalex is not None and not isinstance(self.openalex, str):
+            self.openalex = str(self.openalex)
+
+        if self.wikidata is not None and not isinstance(self.wikidata, str):
+            self.wikidata = str(self.wikidata)
+
+        if self.google_scholar is not None and not isinstance(self.google_scholar, str):
+            self.google_scholar = str(self.google_scholar)
+
+        super().__post_init__(**kwargs)
+
+
+@dataclass(repr=False)
+class Actor(YAMLRoot):
+    """
+    A contributor — a human researcher or a software agent — declared once in an analysis-level `actors` registry and
+    referenced by key from attribution fields. One flat class with `type`-keyed rules rather than subclasses: a human
+    carries `identifiers`, an agent carries `model` / `harness` / `version`.
+    """
+    _inherited_slots: ClassVar[list[str]] = []
+
+    class_class_uri: ClassVar[URIRef] = ASTRA["Actor"]
+    class_class_curie: ClassVar[str] = "astra:Actor"
+    class_name: ClassVar[str] = "Actor"
+    class_model_uri: ClassVar[URIRef] = ASTRA.Actor
+
+    id: Union[str, ActorId] = None
+    type: Union[str, "ActorType"] = None
+    identifiers: Optional[Union[dict, ResearcherId]] = None
+    model: Optional[str] = None
+    harness: Optional[str] = None
+    version: Optional[str] = None
+
+    def __post_init__(self, *_: str, **kwargs: Any):
+        if self._is_empty(self.id):
+            self.MissingRequiredField("id")
+        if not isinstance(self.id, ActorId):
+            self.id = ActorId(self.id)
+
+        if self._is_empty(self.type):
+            self.MissingRequiredField("type")
+        if not isinstance(self.type, ActorType):
+            self.type = ActorType(self.type)
+
+        if self.identifiers is not None and not isinstance(self.identifiers, ResearcherId):
+            self.identifiers = ResearcherId(**as_dict(self.identifiers))
+
+        if self.model is not None and not isinstance(self.model, str):
+            self.model = str(self.model)
+
+        if self.harness is not None and not isinstance(self.harness, str):
+            self.harness = str(self.harness)
+
+        if self.version is not None and not isinstance(self.version, str):
+            self.version = str(self.version)
+
+        super().__post_init__(**kwargs)
+
+
+@dataclass(repr=False)
+class Attribution(YAMLRoot):
+    """
+    An actor together with the role they played. The shorthand form of an attribution slot is a bare actor id instead
+    of this object. The role must be legal for the referenced actor's type (HumanRole for humans, AgentRole for
+    agents); a `range` alone cannot express a dependency on another object's field, so astra-tools enforces the
+    narrowing at validation time.
+    """
+    _inherited_slots: ClassVar[list[str]] = []
+
+    class_class_uri: ClassVar[URIRef] = ASTRA["Attribution"]
+    class_class_curie: ClassVar[str] = "astra:Attribution"
+    class_name: ClassVar[str] = "Attribution"
+    class_model_uri: ClassVar[URIRef] = ASTRA.Attribution
+
+    actor: str = None
+    role: Optional[str] = None
+
+    def __post_init__(self, *_: str, **kwargs: Any):
+        if self._is_empty(self.actor):
+            self.MissingRequiredField("actor")
+        if not isinstance(self.actor, str):
+            self.actor = str(self.actor)
+
+        if self.role is not None and not isinstance(self.role, str):
+            self.role = str(self.role)
 
         super().__post_init__(**kwargs)
 
@@ -725,7 +856,9 @@ class InsightCollection(YAMLRoot):
 @dataclass(repr=False)
 class DecisionSelection(YAMLRoot):
     """
-    A mapping from a decision ID to the selected option ID
+    A mapping from a decision ID to the selected option ID, optionally carrying who selected and who reviewed the
+    pick. In YAML the value may be the scalar shorthand (`decision_id: option_id`) or an object with `option_id` plus
+    attribution fields — see the `decisions` slots on Universe and UniverseNode.
     """
     _inherited_slots: ClassVar[list[str]] = []
 
@@ -736,6 +869,8 @@ class DecisionSelection(YAMLRoot):
 
     decision_id: Union[str, DecisionSelectionDecisionId] = None
     option_id: str = None
+    selected_by: Optional[Union[dict, Attribution]] = None
+    reviewed_by: Optional[Union[dict, Attribution]] = None
 
     def __post_init__(self, *_: str, **kwargs: Any):
         if self._is_empty(self.decision_id):
@@ -747,6 +882,12 @@ class DecisionSelection(YAMLRoot):
             self.MissingRequiredField("option_id")
         if not isinstance(self.option_id, str):
             self.option_id = str(self.option_id)
+
+        if self.selected_by is not None and not isinstance(self.selected_by, Attribution):
+            self.selected_by = Attribution(**as_dict(self.selected_by))
+
+        if self.reviewed_by is not None and not isinstance(self.reviewed_by, Attribution):
+            self.reviewed_by = Attribution(**as_dict(self.reviewed_by))
 
         super().__post_init__(**kwargs)
 
@@ -858,6 +999,97 @@ class OutputType(EnumDefinitionImpl):
     _defn = EnumDefinition(
         name="OutputType",
         description="Type of analysis output",
+    )
+
+class ActorType(EnumDefinitionImpl):
+    """
+    Whether a contributor is a human researcher or a software agent.
+    """
+    human = PermissibleValue(
+        text="human",
+        description="A human researcher.")
+    agent = PermissibleValue(
+        text="agent",
+        description="A software agent (a model running inside a harness).")
+
+    _defn = EnumDefinition(
+        name="ActorType",
+        description="Whether a contributor is a human researcher or a software agent.",
+    )
+
+class HumanRole(EnumDefinitionImpl):
+    """
+    Roles a human actor may hold — a CRediT subset that attaches to a single decision or selection, plus flagged
+    extension roles.
+    """
+    conceptualization = PermissibleValue(
+        text="conceptualization",
+        description="Frames the decision — human-owned.")
+    methodology = PermissibleValue(
+        text="methodology",
+        description="Proposes an option or designs the method.")
+    data_curation = PermissibleValue(
+        text="data_curation",
+        description="Selects or vouches for the data.")
+    software = PermissibleValue(
+        text="software",
+        description="Writes or maintains the recipe code.")
+    formal_analysis = PermissibleValue(
+        text="formal_analysis",
+        description="Runs the analysis, computes the result.")
+    validation = PermissibleValue(
+        text="validation",
+        description="Checks, rules out an option, catches an error.")
+    supervision = PermissibleValue(
+        text="supervision",
+        description="Oversight and final sign-off — human-owned.")
+    planner = PermissibleValue(
+        text="planner",
+        description="Extension — decomposes and sequences the work.")
+    executor = PermissibleValue(
+        text="executor",
+        description="Extension — runs code or tools, returns results.")
+    researcher = PermissibleValue(
+        text="researcher",
+        description="Extension — retrieves prior work, assembles context.")
+
+    _defn = EnumDefinition(
+        name="HumanRole",
+        description="""Roles a human actor may hold — a CRediT subset that attaches to a single decision or selection, plus flagged extension roles.""",
+    )
+
+class AgentRole(EnumDefinitionImpl):
+    """
+    Roles an agent may hold — HumanRole minus the two human-only terms (conceptualization, supervision).
+    """
+    methodology = PermissibleValue(
+        text="methodology",
+        description="Proposes an option or designs the method.")
+    data_curation = PermissibleValue(
+        text="data_curation",
+        description="Selects or vouches for the data.")
+    software = PermissibleValue(
+        text="software",
+        description="Writes or maintains the recipe code.")
+    formal_analysis = PermissibleValue(
+        text="formal_analysis",
+        description="Runs the analysis, computes the result.")
+    validation = PermissibleValue(
+        text="validation",
+        description="Checks, rules out an option, catches an error.")
+    planner = PermissibleValue(
+        text="planner",
+        description="Extension — decomposes and sequences the work.")
+    executor = PermissibleValue(
+        text="executor",
+        description="Extension — runs code or tools, returns results.")
+    researcher = PermissibleValue(
+        text="researcher",
+        description="Extension — retrieves prior work, assembles context.")
+
+    _defn = EnumDefinition(
+        name="AgentRole",
+        description="Roles an agent may hold — HumanRole minus the two human-only terms (conceptualization, supervision).",
     )
 
 # Slots
@@ -972,6 +1204,12 @@ slots.option__excluded = Slot(uri=ASTRA.excluded, name="option__excluded", curie
 slots.option__excluded_reason = Slot(uri=ASTRA.excluded_reason, name="option__excluded_reason", curie=ASTRA.curie('excluded_reason'),
                    model_uri=ASTRA.option__excluded_reason, domain=None, range=Optional[str])
 
+slots.option__proposed_by = Slot(uri=ASTRA.proposed_by, name="option__proposed_by", curie=ASTRA.curie('proposed_by'),
+                   model_uri=ASTRA.option__proposed_by, domain=None, range=Optional[Union[dict, Attribution]])
+
+slots.option__excluded_by = Slot(uri=ASTRA.excluded_by, name="option__excluded_by", curie=ASTRA.curie('excluded_by'),
+                   model_uri=ASTRA.option__excluded_by, domain=None, range=Optional[Union[dict, Attribution]])
+
 slots.decision__id = Slot(uri=ASTRA.id, name="decision__id", curie=ASTRA.curie('id'),
                    model_uri=ASTRA.decision__id, domain=None, range=URIRef,
                    pattern=re.compile(r'^(?!(inputs|outputs|decisions|findings|prior_insights|analyses|options|content)$)[a-z][a-z0-9_]*$'))
@@ -1031,6 +1269,52 @@ slots.analysis__path = Slot(uri=ASTRA.path, name="analysis__path", curie=ASTRA.c
 
 slots.analysis__analyses = Slot(uri=ASTRA.analyses, name="analysis__analyses", curie=ASTRA.curie('analyses'),
                    model_uri=ASTRA.analysis__analyses, domain=None, range=Optional[Union[dict[Union[str, AnalysisId], Union[dict, Analysis]], list[Union[dict, Analysis]]]])
+
+slots.analysis__actors = Slot(uri=ASTRA.actors, name="analysis__actors", curie=ASTRA.curie('actors'),
+                   model_uri=ASTRA.analysis__actors, domain=None, range=Optional[Union[dict[Union[str, ActorId], Union[dict, Actor]], list[Union[dict, Actor]]]])
+
+slots.researcherId__orcid = Slot(uri=ASTRA.orcid, name="researcherId__orcid", curie=ASTRA.curie('orcid'),
+                   model_uri=ASTRA.researcherId__orcid, domain=None, range=Optional[str],
+                   pattern=re.compile(r'^\d{4}-\d{4}-\d{4}-\d{3}[0-9X]$'))
+
+slots.researcherId__arxiv = Slot(uri=ASTRA.arxiv, name="researcherId__arxiv", curie=ASTRA.curie('arxiv'),
+                   model_uri=ASTRA.researcherId__arxiv, domain=None, range=Optional[str])
+
+slots.researcherId__openalex = Slot(uri=ASTRA.openalex, name="researcherId__openalex", curie=ASTRA.curie('openalex'),
+                   model_uri=ASTRA.researcherId__openalex, domain=None, range=Optional[str],
+                   pattern=re.compile(r'^A\d+$'))
+
+slots.researcherId__wikidata = Slot(uri=ASTRA.wikidata, name="researcherId__wikidata", curie=ASTRA.curie('wikidata'),
+                   model_uri=ASTRA.researcherId__wikidata, domain=None, range=Optional[str],
+                   pattern=re.compile(r'^Q\d+$'))
+
+slots.researcherId__google_scholar = Slot(uri=ASTRA.google_scholar, name="researcherId__google_scholar", curie=ASTRA.curie('google_scholar'),
+                   model_uri=ASTRA.researcherId__google_scholar, domain=None, range=Optional[str])
+
+slots.actor__id = Slot(uri=ASTRA.id, name="actor__id", curie=ASTRA.curie('id'),
+                   model_uri=ASTRA.actor__id, domain=None, range=URIRef,
+                   pattern=re.compile(r'^(?!(inputs|outputs|decisions|findings|prior_insights|analyses|options|content)$)[a-z][a-z0-9_]*$'))
+
+slots.actor__type = Slot(uri=ASTRA.type, name="actor__type", curie=ASTRA.curie('type'),
+                   model_uri=ASTRA.actor__type, domain=None, range=Union[str, "ActorType"])
+
+slots.actor__identifiers = Slot(uri=ASTRA.identifiers, name="actor__identifiers", curie=ASTRA.curie('identifiers'),
+                   model_uri=ASTRA.actor__identifiers, domain=None, range=Optional[Union[dict, ResearcherId]])
+
+slots.actor__model = Slot(uri=ASTRA.model, name="actor__model", curie=ASTRA.curie('model'),
+                   model_uri=ASTRA.actor__model, domain=None, range=Optional[str])
+
+slots.actor__harness = Slot(uri=ASTRA.harness, name="actor__harness", curie=ASTRA.curie('harness'),
+                   model_uri=ASTRA.actor__harness, domain=None, range=Optional[str])
+
+slots.actor__version = Slot(uri=ASTRA.version, name="actor__version", curie=ASTRA.curie('version'),
+                   model_uri=ASTRA.actor__version, domain=None, range=Optional[str])
+
+slots.attribution__actor = Slot(uri=ASTRA.actor, name="attribution__actor", curie=ASTRA.curie('actor'),
+                   model_uri=ASTRA.attribution__actor, domain=None, range=str)
+
+slots.attribution__role = Slot(uri=ASTRA.role, name="attribution__role", curie=ASTRA.curie('role'),
+                   model_uri=ASTRA.attribution__role, domain=None, range=Optional[str])
 
 slots.textQuoteSelector__exact = Slot(uri=ASTRA.exact, name="textQuoteSelector__exact", curie=ASTRA.curie('exact'),
                    model_uri=ASTRA.textQuoteSelector__exact, domain=None, range=str)
@@ -1109,6 +1393,12 @@ slots.decisionSelection__decision_id = Slot(uri=ASTRA.decision_id, name="decisio
 
 slots.decisionSelection__option_id = Slot(uri=ASTRA.option_id, name="decisionSelection__option_id", curie=ASTRA.curie('option_id'),
                    model_uri=ASTRA.decisionSelection__option_id, domain=None, range=str)
+
+slots.decisionSelection__selected_by = Slot(uri=ASTRA.selected_by, name="decisionSelection__selected_by", curie=ASTRA.curie('selected_by'),
+                   model_uri=ASTRA.decisionSelection__selected_by, domain=None, range=Optional[Union[dict, Attribution]])
+
+slots.decisionSelection__reviewed_by = Slot(uri=ASTRA.reviewed_by, name="decisionSelection__reviewed_by", curie=ASTRA.curie('reviewed_by'),
+                   model_uri=ASTRA.decisionSelection__reviewed_by, domain=None, range=Optional[Union[dict, Attribution]])
 
 slots.universeNode__id = Slot(uri=ASTRA.id, name="universeNode__id", curie=ASTRA.curie('id'),
                    model_uri=ASTRA.universeNode__id, domain=None, range=URIRef,

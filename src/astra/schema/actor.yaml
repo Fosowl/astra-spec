@@ -1,0 +1,224 @@
+---
+id: https://w3id.org/astra/actor
+name: actor
+description: |-
+  Contributors (human researchers and software agents) and their roles.
+  Provides the actor registry and the {actor, role} attribution value
+  shared by analysis options and universe selections (RFC-0003).
+# Placeholder version. The real version is injected at build time from the
+# latest git tag (or RELEASE_VERSION) — see `_stage-versioned` in the justfile.
+version: 0.0.0
+license: https://creativecommons.org/licenses/by/4.0/
+
+prefixes:
+  astra: https://w3id.org/astra/
+  linkml: https://w3id.org/linkml/
+
+default_prefix: astra
+default_range: string
+
+imports:
+  - linkml:types
+
+# ==========================================================================
+# Enumerations
+# ==========================================================================
+
+enums:
+
+  ActorType:
+    description: Whether a contributor is a human researcher or a software agent.
+    permissible_values:
+      human:
+        description: A human researcher.
+      agent:
+        description: A software agent (a model running inside a harness).
+
+  HumanRole:
+    description: >-
+      Roles a human actor may hold — a CRediT subset that attaches to a
+      single decision or selection, plus flagged extension roles.
+    permissible_values:
+      conceptualization:
+        description: Frames the decision — human-owned.
+      methodology:
+        description: Proposes an option or designs the method.
+      data_curation:
+        description: Selects or vouches for the data.
+      software:
+        description: Writes or maintains the recipe code.
+      formal_analysis:
+        description: Runs the analysis, computes the result.
+      validation:
+        description: Checks, rules out an option, catches an error.
+      supervision:
+        description: Oversight and final sign-off — human-owned.
+      planner:
+        description: Extension — decomposes and sequences the work.
+      executor:
+        description: Extension — runs code or tools, returns results.
+      researcher:
+        description: Extension — retrieves prior work, assembles context.
+
+  AgentRole:
+    description: >-
+      Roles an agent may hold — HumanRole minus the two human-only terms
+      (conceptualization, supervision).
+    permissible_values:
+      methodology:
+        description: Proposes an option or designs the method.
+      data_curation:
+        description: Selects or vouches for the data.
+      software:
+        description: Writes or maintains the recipe code.
+      formal_analysis:
+        description: Runs the analysis, computes the result.
+      validation:
+        description: Checks, rules out an option, catches an error.
+      planner:
+        description: Extension — decomposes and sequences the work.
+      executor:
+        description: Extension — runs code or tools, returns results.
+      researcher:
+        description: Extension — retrieves prior work, assembles context.
+
+# ==========================================================================
+# Classes
+# ==========================================================================
+
+classes:
+
+  ResearcherId:
+    description: >-
+      One or more scholarly identifiers for a human actor. Any subset may
+      be given, but a present record must carry at least one (declared via
+      `any_of`; enforced at runtime by the astra-tools semantic layer).
+      ORCID is the default scheme.
+    attributes:
+      orcid:
+        pattern: "^\\d{4}-\\d{4}-\\d{4}-\\d{3}[0-9X]$"
+        description: ORCID iD (https://orcid.org).
+      arxiv:
+        description: arXiv author identifier (https://arxiv.org/a).
+      openalex:
+        pattern: "^A\\d+$"
+        description: OpenAlex author id, dereferenceable as https://openalex.org/<id>.
+      wikidata:
+        pattern: "^Q\\d+$"
+        description: Wikidata entity id (https://www.wikidata.org).
+      google_scholar:
+        description: Google Scholar profile id.
+    any_of:  # at least one identifier present
+      - slot_conditions:
+          orcid:
+            value_presence: PRESENT
+      - slot_conditions:
+          arxiv:
+            value_presence: PRESENT
+      - slot_conditions:
+          openalex:
+            value_presence: PRESENT
+      - slot_conditions:
+          wikidata:
+            value_presence: PRESENT
+      - slot_conditions:
+          google_scholar:
+            value_presence: PRESENT
+
+  Actor:
+    description: >-
+      A contributor — a human researcher or a software agent — declared
+      once in an analysis-level `actors` registry and referenced by key
+      from attribution fields. One flat class with `type`-keyed rules
+      rather than subclasses: a human carries `identifiers`, an agent
+      carries `model` / `harness` / `version`.
+    attributes:
+      id:
+        identifier: true
+        pattern: "^(?!(inputs|outputs|decisions|findings|prior_insights|analyses|options|content)$)[a-z][a-z0-9_]*$"
+        description: Actor identifier (the key in the actors map).
+      type:
+        range: ActorType
+        required: true
+        description: Whether this actor is a human or an agent.
+      identifiers:
+        range: ResearcherId
+        inlined: true
+        description: Scholarly identifiers (human actors only).
+      model:
+        description: Model name and version, e.g. claude-opus-5 (agent actors only).
+      harness:
+        description: Software wrapper running the model, e.g. claude-code (agent actors only).
+      version:
+        description: Version or date stamp of the agent configuration (agent actors only).
+    rules:
+      # One forbid-rule per slot: a multi-slot ABSENT postcondition
+      # compiles to `not: {required: [a, b, c]}` in JSON Schema, which
+      # only fires when ALL slots are present. Same convention as the
+      # per-slot from_alias_forbids_* rules on Decision/Input/Output.
+      - title: human_forbids_model
+        preconditions:
+          slot_conditions:
+            type:
+              equals_string: human
+        postconditions:
+          slot_conditions:
+            model:
+              value_presence: ABSENT
+      - title: human_forbids_harness
+        preconditions:
+          slot_conditions:
+            type:
+              equals_string: human
+        postconditions:
+          slot_conditions:
+            harness:
+              value_presence: ABSENT
+      - title: human_forbids_version
+        preconditions:
+          slot_conditions:
+            type:
+              equals_string: human
+        postconditions:
+          slot_conditions:
+            version:
+              value_presence: ABSENT
+      - title: agent_forbids_identifiers
+        preconditions:
+          slot_conditions:
+            type:
+              equals_string: agent
+        postconditions:
+          slot_conditions:
+            identifiers:
+              value_presence: ABSENT
+      - title: agent_requires_model
+        description: An agent actor must name its model.
+        preconditions:
+          slot_conditions:
+            type:
+              equals_string: agent
+        postconditions:
+          slot_conditions:
+            model:
+              required: true
+
+  Attribution:
+    description: >-
+      An actor together with the role they played. The shorthand form of
+      an attribution slot is a bare actor id instead of this object. The
+      role must be legal for the referenced actor's type (HumanRole for
+      humans, AgentRole for agents); a `range` alone cannot express a
+      dependency on another object's field, so astra-tools enforces the
+      narrowing at validation time.
+    attributes:
+      actor:
+        required: true
+        description: Actor id (a key in an `actors` registry in scope).
+      role:
+        any_of:
+          - range: HumanRole
+          - range: AgentRole
+        description: >-
+          Contribution role — a CRediT-subset term or a flagged extension,
+          drawn from the enum matching the referenced actor's type.

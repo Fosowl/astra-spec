@@ -1,0 +1,61 @@
+# Valid: actor registry plus option-level attribution (RFC-0003).
+# Exercises both attribution forms: the bare actor-id shorthand and the
+# {actor, role} object, on proposed_by and excluded_by.
+id: iris_actors
+version: "0.1.0"
+name: Iris classification with actor attribution
+description: >-
+  Minimal analysis demonstrating the optional actor layer: a human and
+  an agent in the registry, attributed proposals, and an attributed
+  exclusion recorded with the existing excluded / excluded_reason fields.
+actors:
+  jane:
+    type: human
+    identifiers:
+      orcid: "0009-0000-0000-0000"
+      openalex: "A5012345678"
+  assistant:
+    type: agent
+    model: claude-opus-5
+    harness: claude-code
+    version: "2026-07"
+inputs:
+  - id: iris_data
+    type: data
+    description: Iris measurements CSV
+    source: data/iris.csv
+outputs:
+  - id: accuracy_metric
+    type: metric
+    description: Held-out classification accuracy
+    inputs:
+      - iris_data
+    recipe:
+      command: python src/train.py --data {inputs.iris_data} --out {output}
+decisions:
+  scaling:
+    label: Feature scaling
+    rationale: Whether and how features are standardized before fitting.
+    default: standard_after_split
+    options:
+      standard_after_split:
+        label: StandardScaler, fit on the training split only
+        proposed_by: {actor: jane, role: methodology}
+      standard_before_split:
+        label: StandardScaler, fit on the full dataset before the split
+        proposed_by: {actor: assistant, role: methodology}
+        excluded: true
+        excluded_reason: >-
+          Data leakage: fitting before the train/test split lets test-set
+          statistics contaminate the training features.
+        excluded_by: {actor: jane, role: validation}
+  model:
+    label: Classifier
+    default: random_forest
+    options:
+      random_forest:
+        label: Random forest
+        proposed_by: {actor: jane, role: methodology}
+      svm:
+        label: SVM (RBF kernel)
+        proposed_by: {actor: assistant, role: researcher}

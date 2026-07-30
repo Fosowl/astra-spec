@@ -20,6 +20,7 @@ default_range: string
 
 imports:
   - linkml:types
+  - actor
   - insight
   - universe
 
@@ -430,6 +431,25 @@ classes:
         description: Whether this option was considered and rejected
       excluded_reason:
         description: Why this option was excluded
+      proposed_by:
+        range: Attribution
+        any_of:
+          - range: string
+          - range: Attribution
+        inlined: true
+        description: >-
+          Who put this option on the table — an actor id (a key in an
+          `actors` registry in scope), or an {actor, role} object.
+      excluded_by:
+        range: Attribution
+        any_of:
+          - range: string
+          - range: Attribution
+        inlined: true
+        description: >-
+          Who ruled this option out — an actor id, or an {actor, role}
+          object. Pairs with the existing excluded / excluded_reason
+          fields; only legal on an option marked excluded.
 
   Decision:
     description: >-
@@ -577,3 +597,11 @@ classes:
         multivalued: true
         inlined: true
         description: Nested sub-analyses (keyed by analysis ID)
+      actors:
+        range: Actor
+        multivalued: true
+        inlined: true
+        description: >-
+          Registry of contributors (humans and agents), keyed by actor id.
+          May be declared at any level; attribution references resolve
+          upward through ancestor scopes.

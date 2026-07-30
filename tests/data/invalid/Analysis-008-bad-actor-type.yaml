@@ -1,0 +1,12 @@
+# Invalid: actor `type` must be one of the ActorType enum (human, agent).
+id: bad_actor_type
+name: Actor type outside the enum
+inputs:
+  - id: data
+    type: data
+outputs:
+  - id: result
+    type: metric
+actors:
+  helper:
+    type: robot

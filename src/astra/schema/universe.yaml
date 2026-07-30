@@ -18,6 +18,7 @@ default_range: string
 
 imports:
   - linkml:types
+  - actor
 
 # ==========================================================================
 # Classes
@@ -26,7 +27,12 @@ imports:
 classes:
 
   DecisionSelection:
-    description: A mapping from a decision ID to the selected option ID
+    description: >-
+      A mapping from a decision ID to the selected option ID, optionally
+      carrying who selected and who reviewed the pick. In YAML the value
+      may be the scalar shorthand (`decision_id: option_id`) or an object
+      with `option_id` plus attribution fields — see the `decisions`
+      slots on Universe and UniverseNode.
     attributes:
       decision_id:
         identifier: true
@@ -34,6 +40,24 @@ classes:
       option_id:
         required: true
         description: ID of the selected option
+      selected_by:
+        range: Attribution
+        any_of:
+          - range: string
+          - range: Attribution
+        inlined: true
+        description: >-
+          Who chose this option for this universe — an actor id (a key in
+          the analysis's `actors` registry), or an {actor, role} object.
+      reviewed_by:
+        range: Attribution
+        any_of:
+          - range: string
+          - range: Attribution
+        inlined: true
+        description: >-
+          Who reviewed the selection — an actor id, or an {actor, role}
+          object. Typically a human signing off on an agent's pick.
 
   UniverseNode:
     description: >-
@@ -49,10 +73,18 @@ classes:
           Name of a universe in the sub-analysis's universes/ directory.
           Alternative to inline decisions.
       decisions:
+        # Explicit union: with attribution slots DecisionSelection is no
+        # longer a LinkML "simple dict" class, so the scalar shorthand
+        # (decision_id: option_id) must be declared, not inferred.
         range: DecisionSelection
+        any_of:
+          - range: string
+          - range: DecisionSelection
         multivalued: true
         inlined: true
-        description: Decision selections (decision_id to option_id)
+        description: >-
+          Decision selections — scalar shorthand (decision_id: option_id)
+          or an object with option_id plus attribution fields.
       analyses:
         range: UniverseNode
         multivalued: true
@@ -71,10 +103,16 @@ classes:
       description:
         description: Free-prose description of this universe.
       decisions:
+        # Same explicit union as UniverseNode.decisions — see note there.
         range: DecisionSelection
+        any_of:
+          - range: string
+          - range: DecisionSelection
         multivalued: true
         inlined: true
-        description: Root-level decision selections
+        description: >-
+          Root-level decision selections — scalar shorthand or an object
+          with option_id plus attribution fields.
       analyses:
         range: UniverseNode
         multivalued: true

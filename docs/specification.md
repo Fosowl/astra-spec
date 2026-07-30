@@ -275,6 +275,33 @@ options:
 
 In this way, a reviewer can see not only what was chosen, but what was considered and why it was rejected.
 
+### Actors and attribution
+
+Optionally, an analysis can record *who* exercised each judgment — which matters when humans and agents co-author an analysis: without it, a choice a researcher examined is indistinguishable from a default nobody looked at. An `actors:` registry declares each contributor once (a `human` with scholarly identifiers, or an `agent` identified by model and harness), and attribution fields reference them by key:
+
+```yaml
+actors:
+  jane:
+    type: human
+    identifiers:
+      orcid: "0009-0000-0000-0000"   # any subset of orcid/arxiv/openalex/wikidata/google_scholar
+  assistant:
+    type: agent
+    model: claude-opus-5
+    harness: claude-code
+    version: "2026-07"
+
+options:
+  quadratic_fit:
+    label: Quadratic relation
+    proposed_by: {actor: assistant, role: methodology}
+    excluded: true
+    excluded_reason: Pilot residuals did not justify adding curvature.
+    excluded_by: {actor: jane, role: validation}
+```
+
+Every attribution value is either a bare actor id (shorthand) or an `{actor, role}` object whose `role` comes from a CRediT-derived vocabulary keyed to the actor's type (`conceptualization` and `supervision` are human-only). Universe selections can carry `selected_by` / `reviewed_by` the same way — see the Universe field reference. All actor fields are optional; a spec with none is valid and unchanged in meaning. See RFC-0003 for the full design.
+
 ### Sub-analyses
 
 Experiments are usually made of smaller analyses. In ASTRA, you can build them up as nested `analyses`: a cleaning stage can feed a fitting stage, which can feed a summary plot.
@@ -407,6 +434,7 @@ The `Analysis` object is the root of `astra.yaml` and the type used for every su
 | `prior_insights` | map of `Insight` | No | Existing claims used to motivate choices. |
 | `findings` | map of `Insight` | No | Claims produced by this analysis. |
 | `analyses` | map of `Analysis` | No | Nested sub-analyses. |
+| `actors` | map of `Actor` | No | Registry of contributors (humans and agents), keyed by actor id. |
 | `path` | `string` | No | External directory containing a sub-analysis ASTRA file. |
 
 `path` is for nested analyses only. It is mutually exclusive with inline content fields on that sub-analysis.
@@ -534,8 +562,24 @@ An option is one possible selection for a decision.
 | `incompatible_with` | `string[]` | No | Other options that cannot be selected with this one. |
 | `excluded` | `boolean` | No | Marks an option as considered but unavailable. |
 | `excluded_reason` | `string` | No | Why the option was excluded. |
+| `proposed_by` | actor id or `Attribution` | No | Who put this option on the table. |
+| `excluded_by` | actor id or `Attribution` | No | Who ruled this option out; only legal alongside `excluded: true`. |
 
 Constraint references use `decision_id.option_id` and are scoped within the same analysis node.
+
+### Actor, ResearcherId, and Attribution
+
+Declared in the `actors:` registry on an analysis and referenced by key from attribution fields (`proposed_by`, `excluded_by`, `selected_by`, `reviewed_by`).
+
+| Field | Type | Required | Meaning |
+|---|---|---:|---|
+| `type` | `human` \| `agent` | Yes | Kind of contributor. |
+| `identifiers` | `ResearcherId` | No | Scholarly ids — human actors only; at least one when present. |
+| `model` | `string` | No | Model name — agent actors only (required for agents). |
+| `harness` | `string` | No | Software wrapper running the model — agent actors only. |
+| `version` | `string` | No | Version or date stamp of the agent configuration — agent actors only. |
+
+`ResearcherId` groups optional `orcid`, `arxiv`, `openalex`, `wikidata`, and `google_scholar` ids. An `Attribution` is `{actor, role}`: `actor` is a registry key, `role` a CRediT-derived term legal for that actor's type (`HumanRole` / `AgentRole` enums; `conceptualization` and `supervision` are human-only). The bare actor-id string is accepted everywhere as shorthand for an `Attribution` without a role.
 
 ### Insight and Evidence
 
@@ -593,10 +637,27 @@ A universe selects one option for every active decision.
 |---|---|---:|---|
 | `id` | `string` | Yes | Universe identifier. |
 | `description` | `string` | No | Human-readable explanation. |
-| `decisions` | map of `decision_id: option_id` | No | Selections at the current analysis scope. |
+| `decisions` | map of `decision_id: option_id` or `DecisionSelection` | No | Selections at the current analysis scope. |
 | `analyses` | map of `UniverseNode` | No | Nested selections mirroring sub-analyses. |
 
 Universe IDs may use lowercase letters, numbers, underscores, and hyphens. Decision and option IDs use lowercase snake_case.
+
+Each selection is either the scalar shorthand (`decision_id: option_id`) or an object form that can attribute the pick:
+
+```yaml
+decisions:
+  scaling: standard_after_split          # shorthand — no attribution
+  model:                                 # object form
+    option_id: random_forest
+    selected_by: {actor: assistant, role: methodology}
+    reviewed_by: {actor: jane, role: validation}
+```
+
+| DecisionSelection field | Type | Required | Meaning |
+|---|---|---:|---|
+| `option_id` | `string` | Yes | The selected option. |
+| `selected_by` | actor id or `Attribution` | No | Who chose this option for this universe. |
+| `reviewed_by` | actor id or `Attribution` | No | Who reviewed the selection. |
 
 ### Conditions and constraints
 
