@@ -5,7 +5,7 @@ description: |-
   Contributors — human researchers and software agents — and the roles
   they hold on a decision or a universe selection. Provides the actor
   registry and the {actor, role} attribution value shared by analysis
-  options and universe selections (RFC-0003).
+  options and universe selections (RFC-0004).
 # Placeholder version. The real version is injected at build time from the
 # latest git tag (or RELEASE_VERSION) — see `_stage-versioned` in the justfile.
 version: 0.0.0

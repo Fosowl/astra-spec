@@ -304,7 +304,7 @@ options:
       fit noise at this sample size.
 ```
 
-Every attribution value is either a bare actor id (shorthand) or an `{actor, role}` object whose `role` comes from a CRediT-derived vocabulary keyed to the actor's type (`conceptualization` and `supervision` are human-only). Universe selections can carry `selected_by` / `reviewed_by` the same way — see the Universe field reference. All actor fields are optional; a spec with none is valid and unchanged in meaning. See RFC-0003 for the full design.
+Every attribution value is either a bare actor id (shorthand) or an `{actor, role}` object whose `role` comes from a CRediT-derived vocabulary keyed to the actor's type (`conceptualization` and `supervision` are human-only). Universe selections can carry `selected_by` / `reviewed_by` the same way — see the Universe field reference. All actor fields are optional; a spec with none is valid and unchanged in meaning. See RFC-0004 for the full design.
 
 An exclusion can be recorded in full: `excluded_by` says who ruled the option out, `excluded_at` says when (an ISO-8601 calendar date), and `exclusion_rationale` says why the decider found the evidence dispositive. That last field is deliberately separate from `excluded_reason`, which records what was measured or observed. The two come apart whenever an option is rejected on a stated principle despite numbers that looked acceptable on their own — keeping them in one field would flatten the evidence into the judgment and lose the ability to audit either. Dates matter for the same reason ordering does: an option ruled out before a later result landed was judged on different evidence than one ruled out after.
 

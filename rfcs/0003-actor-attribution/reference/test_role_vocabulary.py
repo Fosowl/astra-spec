@@ -1,4 +1,4 @@
-"""Four consistency guardrails for the RFC-0003 role vocabulary."""
+"""Four consistency guardrails for the RFC-0004 role vocabulary."""
 
 from role_vocabulary import (
     AGENT_ROLES,

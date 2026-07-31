@@ -1,4 +1,4 @@
-# Valid: actor registry plus option-level attribution (RFC-0003).
+# Valid: actor registry plus option-level attribution (RFC-0004).
 # Exercises both attribution forms: the bare actor-id shorthand and the
 # {actor, role} object, on proposed_by and excluded_by.
 id: iris_actors

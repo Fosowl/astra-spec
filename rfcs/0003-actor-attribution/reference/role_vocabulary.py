@@ -1,4 +1,4 @@
-"""Reference implementation of the RFC-0003 role vocabulary.
+"""Reference implementation of the RFC-0004 role vocabulary.
 
 Normative shape for the astra-tools side: one closed ``Role`` enum (the
 schema's vocabulary) and one per-role allow-table, ``ROLE_ALLOWED_TYPES``,
@@ -7,7 +7,7 @@ lists and every exclusion are *derived* from the table — nothing else is
 hand-maintained, which is what stops the human and agent lists from
 drifting apart. Guardrails live in ``test_role_vocabulary.py``.
 
-Run the guardrails:  python -m pytest rfcs/0003-actor-attribution/reference/
+Run the guardrails:  python -m pytest rfcs/0004-actor-attribution/reference/
 """
 
 from __future__ import annotations

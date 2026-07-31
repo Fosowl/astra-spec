@@ -1,4 +1,4 @@
-# Valid: universe selections in both forms (RFC-0003) — the scalar
+# Valid: universe selections in both forms (RFC-0004) — the scalar
 # shorthand (no attribution) and the object form carrying selected_by /
 # reviewed_by in both the actor-id and {actor, role} shapes.
 id: baseline_attributed
